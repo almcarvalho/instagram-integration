@@ -9,7 +9,11 @@ const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
 const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
 const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v25.0";
 const AUTO_REPLY_MESSAGE =
-  process.env.AUTO_REPLY_MESSAGE || "Obrigado pelo comentario! 😊";
+  process.env.AUTO_REPLY_MESSAGE || "Obrigado pelo comentario!";
+const COMMENT_DEDUP_TTL_MS = Number(
+  process.env.COMMENT_DEDUP_TTL_MS || 1000 * 60 * 60 * 24
+);
+const processedComments = new Map();
 
 app.use(express.json());
 
@@ -67,7 +71,15 @@ app.post("/webhook", async (req, res) => {
     const results = [];
 
     for (const commentId of commentIds) {
+      if (hasRecentlyProcessedComment(commentId)) {
+        console.log(
+          `Comentario ${commentId} ignorado porque ja foi respondido recentemente.`
+        );
+        continue;
+      }
+
       const replyResult = await replyToComment(commentId, AUTO_REPLY_MESSAGE);
+      markCommentAsProcessed(commentId);
       results.push(replyResult);
     }
 
@@ -103,6 +115,33 @@ function extractCommentIds(payload) {
   }
 
   return [...new Set(ids)];
+}
+
+function hasRecentlyProcessedComment(commentId) {
+  cleanupProcessedComments();
+
+  const processedAt = processedComments.get(commentId);
+
+  if (!processedAt) {
+    return false;
+  }
+
+  return Date.now() - processedAt < COMMENT_DEDUP_TTL_MS;
+}
+
+function markCommentAsProcessed(commentId) {
+  cleanupProcessedComments();
+  processedComments.set(commentId, Date.now());
+}
+
+function cleanupProcessedComments() {
+  const now = Date.now();
+
+  for (const [commentId, processedAt] of processedComments.entries()) {
+    if (now - processedAt >= COMMENT_DEDUP_TTL_MS) {
+      processedComments.delete(commentId);
+    }
+  }
 }
 
 async function replyToComment(commentId, message) {
