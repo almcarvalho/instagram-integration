@@ -1,0 +1,25 @@
+{
+  "name": "instagram-integration-webhook",
+  "version": "1.0.0",
+  "description": "Webhook do Instagram para Heroku com resposta automatica via API da Meta.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "heroku",
+    "instagram",
+    "meta",
+    "webhook",
+    "nodejs"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2"
+  }
+}
