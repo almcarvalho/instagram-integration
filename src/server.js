@@ -102,7 +102,7 @@ function extractCommentIds(payload) {
 
   for (const entry of payload.entry || []) {
     for (const change of entry.changes || []) {
-      if (change.field !== "comments") {
+      if (!shouldReplyToCommentChange(entry, change)) {
         continue;
       }
 
@@ -115,6 +115,41 @@ function extractCommentIds(payload) {
   }
 
   return [...new Set(ids)];
+}
+
+function shouldReplyToCommentChange(entry, change) {
+  if (change.field !== "comments") {
+    return false;
+  }
+
+  const comment = change.value || {};
+  const commentId = comment.id || comment.comment_id;
+  const authorId = comment.from?.id;
+  const instagramAccountId = entry?.id;
+
+  if (!commentId) {
+    return false;
+  }
+
+  if (comment.parent_id) {
+    console.log(
+      `Comentario ${commentId} ignorado porque ja e uma resposta a outro comentario.`
+    );
+    return false;
+  }
+
+  if (
+    authorId &&
+    instagramAccountId &&
+    String(authorId) === String(instagramAccountId)
+  ) {
+    console.log(
+      `Comentario ${commentId} ignorado porque foi criado pela propria conta do Instagram.`
+    );
+    return false;
+  }
+
+  return true;
 }
 
 function hasRecentlyProcessedComment(commentId) {
